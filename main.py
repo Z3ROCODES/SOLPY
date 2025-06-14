@@ -26,7 +26,6 @@ def color(name):
     }.get(name, '\033[37m')
 
 lightwhite = color("LIGHTWHITE_EX")
-
 banner = rf"""
 {Fore.MAGENTA}███████╗ ██████╗ ██╗         {Fore.LIGHTYELLOW_EX}██████╗ {Fore.LIGHTGREEN_EX}██╗   ██╗{lightwhite}
 {Fore.MAGENTA}██╔════╝██╔═══██╗██║         {Fore.LIGHTYELLOW_EX}██╔══██╗{Fore.LIGHTGREEN_EX}╚██╗ ██╔╝{lightwhite}
@@ -119,55 +118,54 @@ def run_main_menu():
             os.system(f"spl-token authorize {shlex.quote(mnt)} freeze --disable")
         elif choice == "11":
             print("""
-https://app.pinata.cloud/ipfs/files ( FOR YOUR METADATA POST THE THE IMAGE AND METADATA.JSON IF YOU ARE STUCK )
-https://faucet.solana.com/ ( TO GIVE THE OWNER TOKEN SOME SOL [ DEVNET ] )
-https://raydium.io/swap/ ( THESE ARE WHAT U USE TO SEE YOUR COIN AND MAKE UR COIN PUBLIC )
-https://raydium.io/liquidity-pools/ ( TO MAKE YOUR COIN PUBLIC )
-https://solscan.io/ ( GREAT THING TO HAVE )
-https://sol-incinerator.com/ ( IF U WANT TO MAKE UR COIN LEGIT SO YOU BURN SOME OF THEM )
-https://dexscreener.com/  ( MARKET PLACE )
+https://app.pinata.cloud/ipfs/files
+https://faucet.solana.com/
+https://raydium.io/swap/
+https://raydium.io/liquidity-pools/
+https://solscan.io/
+https://sol-incinerator.com/
+https://dexscreener.com/
 """)
             input("Press Enter to go back...")
         elif choice == "12":
             break
 
-print(banner)
-if input(f"{lightwhite}Did you use this before? (Y/N): ").strip().lower() == "y":
-    token_folder = input("Enter Your Token folder name: ")
-    os.chdir(token_folder)
-    os.system("docker run -it --rm -v $(pwd):/solana-token -v $(pwd)/solana-data:/root/.config/solana heysolana")
-    run_main_menu()
-else:
-    if input("Install Docker? (Y/N): ").strip().lower() == "y":
-        print(f"{lightwhite}[{Fore.RED}!{lightwhite}] Installing Docker...")
-        os.system("sudo apt-get update")
-        os.system("sudo apt-get install -y ca-certificates curl gnupg lsb-release")
-        os.system("sudo install -m 0755 -d /etc/apt/keyrings")
-        os.system("curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg")
-        os.system("sudo chmod a+r /etc/apt/keyrings/docker.gpg")
-        os.system('echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] '
-                  'https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | '
-                  'sudo tee /etc/apt/sources.list.d/docker.list > /dev/null')
-        os.system("sudo apt-get update")
-        os.system("sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin")
-        os.system("sudo usermod -aG docker $USER")
-        os.system("newgrp docker")
-        os.system("sudo dockerd > /dev/null 2>&1 &")
-        input("Press Enter...")
+def setup_or_enter():
+    print(banner)
+    if input(f"{lightwhite}Did you use this before? (Y/N): ").strip().lower() == "y":
+        token_folder = input("Enter Your Token folder name: ")
+        os.chdir(token_folder)
+        os.system("docker run -it -v $(pwd):/solana-token -v $(pwd)/solana-data:/root/.config/solana heysolana bash -c 'cd /solana-token && python3 main.py'")
+    else:
+        if input("Install Docker? (Y/N): ").strip().lower() == "y":
+            os.system("sudo apt-get update")
+            os.system("sudo apt-get install -y ca-certificates curl gnupg lsb-release")
+            os.system("sudo install -m 0755 -d /etc/apt/keyrings")
+            os.system("curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg")
+            os.system("sudo chmod a+r /etc/apt/keyrings/docker.gpg")
+            os.system('echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] '
+                      'https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" | '
+                      'sudo tee /etc/apt/sources.list.d/docker.list > /dev/null')
+            os.system("sudo apt-get update")
+            os.system("sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin")
+            os.system("sudo usermod -aG docker $USER")
+            os.system("newgrp docker")
+            os.system("sudo dockerd > /dev/null 2>&1 &")
+            input("Press Enter...")
 
-    if input("Test Docker? (Y/N): ").strip().lower() == "y":
-        os.system("docker run hello-world")
+        if input("Test Docker? (Y/N): ").strip().lower() == "y":
+            os.system("docker run hello-world")
 
-    token_name = input("Enter Your Token Name: ")
-    os.makedirs(token_name, exist_ok=True)
-    os.chdir(token_name)
+        token_name = input("Enter Your Token Name: ")
+        os.makedirs(token_name, exist_ok=True)
+        os.chdir(token_name)
 
-    with open("Dockerfile", "w") as f:
-        f.write("""\
+        with open("Dockerfile", "w") as f:
+            f.write("""\
 FROM debian:bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \\
-    curl build-essential libssl-dev pkg-config nano \\
+    curl build-essential libssl-dev pkg-config nano python3 \\
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \\
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 ENV PATH="/root/.cargo/bin:$PATH"
@@ -181,25 +179,8 @@ WORKDIR /solana-token
 CMD ["/bin/bash"]
 """)
 
-    os.system("docker build -t heysolana .")
-    os.system("docker run -it --rm -v $(pwd):/solana-token -v $(pwd)/solana-data:/root/.config/solana heysolana")
+        os.system("docker build -t heysolana .")
+        os.system("docker run -it -v $(pwd):/solana-token -v $(pwd)/solana-data:/root/.config/solana heysolana bash -c 'cd /solana-token && python3 main.py'")
 
-    if input("Test Solana? (Y/N): ").strip().lower() == "y":
-        os.system("solana --version")
-        input("Press Enter to make a wallet...")
-
-    owner_name = input("Enter the main name of the token: ")
-    os.system(f"solana-keygen grind --starts-with {shlex.quote(owner_name)}:1")
-    os.system("ls")
-    owner_json = input("Enter the json of the owner (no .json): ")
-    os.system(f"solana config set --keypair {shlex.quote(owner_json)}.json")
-
-    choose_input = input("Enter devnet or mainnet: ").strip().lower()
-    if choose_input == "devnet":
-        os.system("solana config set --url devnet")
-    elif choose_input == "mainnet":
-        os.system("solana config set --url mainnet-beta")
-
-    os.system("solana config get")
-    run_main_menu()
-# Made By Z3RO
+if __name__ == "__main__":
+    setup_or_enter()
