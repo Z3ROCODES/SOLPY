@@ -23,6 +23,7 @@ A Python command-line tool to help you manage Solana wallets, tokens, minting, m
 
 1. Run the script:  
    ```bash
+   pip install -r requirements.txt
    python3 main.py
    ```
 
